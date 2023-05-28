@@ -1,0 +1,20 @@
+name: "SUEZ - Tout sur mon eau"
+description: "Get daily water consumption from SUEZ - Tout sur mon eau."
+version: "1.0.0"
+slug: "suez_tout_sur_mon_eau"
+init: false
+homeassistant_api: true
+arch:
+  - aarch64
+  - amd64
+  - armhf
+  - armv7
+  - i386
+options:
+  username: null
+  password: null
+  meter_id: null
+schema:
+  username: str
+  password: str
+  meter_id: str
