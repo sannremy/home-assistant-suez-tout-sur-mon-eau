@@ -8,7 +8,7 @@ This project has been inspired by [PySuez](https://github.com/ooii/pySuez) and [
 
 ### Motivation
 
-The Tout sur mon eau website keeps changing structures and algorithms. I reached out to know if there's any plan for an official API, unfortunately they never replied.
+The Tout sur mon eau website keeps changing structures and algorithms, which break unofficial libraries to get the data. I reached out to know if there's any plan for an official API, unfortunately they never replied.
 
 ## Installation
 
