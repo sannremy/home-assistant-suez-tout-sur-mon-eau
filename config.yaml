@@ -5,10 +5,10 @@ slug: "suez_tout_sur_mon_eau"
 init: false
 homeassistant_api: true
 arch:
-  # - aarch64
+  - aarch64
   # - amd64
   # - armhf
-  - armv7
+  # - armv7
   # - i386
 image: sannremy/suez-tout-sur-mon-eau-{arch}
 options:

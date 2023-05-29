@@ -122,3 +122,6 @@ puppeteer.use(StealthPlugin());
     }),
   });
 })();
+
+// Keep container running
+setInterval(() => {}, 1 << 30);
