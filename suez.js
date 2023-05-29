@@ -127,11 +127,14 @@ const getData = async () => {
 const job = new CronJob(
   '0 0 4 * * *', // Every day at 4am
   async function () { // onTick
-    console.log('Get data from Suez, start.');
+    const date = new Date();
+    console.log(`${date.toISOString()} - Get data from Suez, start.`);
+
     await getData();
   },
   function () { // onComplete
-    console.log('Get data from Suez, done.');
+    const date = new Date();
+    console.log(`${date.toISOString()} - Get data from Suez, done.`);
   },
   true, // Start the job right now
   'Europe/Paris', // Timezone
