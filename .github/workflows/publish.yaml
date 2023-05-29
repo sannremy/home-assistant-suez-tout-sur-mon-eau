@@ -2,6 +2,15 @@ name: "Publish"
 
 on:
   push:
+    paths:
+      - 'config.yaml'
+      - 'Dockerfile'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'icon.png'
+      - 'logo.png'
+      - '**.sh'
+      - '**.js'
     branches:
       - main
 
