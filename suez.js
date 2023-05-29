@@ -1,9 +1,10 @@
+const CronJob = require('cron').CronJob;
 const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 
 puppeteer.use(StealthPlugin());
 
-(async () => {
+const getData = async () => {
   const browser = await puppeteer.launch({
     headless: 'new',
     executablePath: '/usr/bin/chromium-browser',
@@ -121,7 +122,19 @@ puppeteer.use(StealthPlugin());
       },
     }),
   });
-})();
+};
 
-// Keep container running
-setInterval(() => {}, 1 << 30);
+const job = new CronJob(
+  '0 0 4 * * *', // Every day at 4am
+  async function () { // onTick
+    console.log('Get data from Suez, start.');
+    await getData();
+  },
+  function () { // onComplete
+    console.log('Get data from Suez, done.');
+  },
+  true, // Start the job right now
+  'Europe/Paris', // Timezone
+  null, // Context
+  true // Run the job
+);
