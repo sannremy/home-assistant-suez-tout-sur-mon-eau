@@ -5,6 +5,9 @@ const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 puppeteer.use(StealthPlugin());
 
 const getData = async () => {
+  const startDate = new Date();
+  console.log(`${startDate.toISOString()} - Get data from Suez, start.`);
+
   const browser = await puppeteer.launch({
     headless: 'new',
     executablePath: '/usr/bin/chromium-browser',
@@ -104,7 +107,7 @@ const getData = async () => {
     return date === yesterdayString;
   }) || [];
 
-  fetch('http://supervisor/core/api/states/sensor.suez_water_consumption', {
+  await fetch('http://supervisor/core/api/states/sensor.suez_water_consumption', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -122,20 +125,17 @@ const getData = async () => {
       },
     }),
   });
+
+  const endDate = new Date();
+  console.log(`${endDate.toISOString()} - Get data from Suez, done.`);
 };
 
 const job = new CronJob(
   '0 0 4 * * *', // Every day at 4am
-  async function () { // onTick
-    const date = new Date();
-    console.log(`${date.toISOString()} - Get data from Suez, start.`);
-
-    await getData();
+  function () { // onTick
+    getData();
   },
-  function () { // onComplete
-    const date = new Date();
-    console.log(`${date.toISOString()} - Get data from Suez, done.`);
-  },
+  null,
   true, // Start the job right now
   'Europe/Paris', // Timezone
   null, // Context
