@@ -131,7 +131,7 @@ const getData = async () => {
 };
 
 const job = new CronJob(
-  '0 0 4 * * *', // Every day at 4am
+  `0 ${process.env.SUEZ_CRON}`,
   function () { // onTick
     getData();
   },

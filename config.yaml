@@ -15,7 +15,9 @@ options:
   username: null
   password: null
   meter_id: null
+  cron: 0 9 * * *
 schema:
   username: str
   password: str
   meter_id: str
+  cron: str
