@@ -23,6 +23,7 @@ The Tout sur mon eau website keeps changing structures and algorithms, which bre
 |`username`|Yes|The email address to login on Tout sur mon eau.|
 |`password`|Yes|The password to login on Tout sur mon eau.|
 |`meter_id`|Yes|The meter ID to monitor. It can be found by going through: *Ma conso*, *Je suis mes consommations*, right-click on *Exporter les données*, Copy Link. The ID is located at the end of the link. It usually contains numbers.|
+|`cron`|No|Default is every day at 9am: `0 9 * * *`. If set, it will override the time when the job runs.|
 
 ## Contributing
 
