@@ -122,6 +122,7 @@ const getData = async () => {
         device_class: 'water',
         date: yesterdayData[0],
         meter: yesterdayData[2],
+        state_class: 'measurement',
       },
     }),
   });
