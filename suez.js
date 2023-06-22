@@ -34,29 +34,49 @@ const getData = async () => {
     waitUntil: 'networkidle0',
   });
 
-  // Get CSRF token
-  const csrfToken = await page.evaluate(() => {
-    return window.tsme_data.csrfToken;
+  // Click on email
+  await page.waitForSelector('#username');
+  await page.click('#username');
+
+  // Type email
+  await page.keyboard.type(process.env.SUEZ_USERNAME);
+
+  // Click on password
+  await page.waitForSelector('#password');
+  await page.click('#password');
+
+  // Type password
+  await page.keyboard.type(process.env.SUEZ_PASSWORD);
+
+  await page.keyboard.press('Enter');
+
+  await page.waitForNavigation({
+    waitUntil: 'networkidle0',
   });
 
-  // Login params
-  const loginBody = new URLSearchParams({
-    'tsme_user_login[_username]': process.env.SUEZ_USERNAME,
-    'tsme_user_login[_password]': process.env.SUEZ_PASSWORD,
-    '_csrf_token': csrfToken,
-    'tsme_user_login[_target_path]': '/mon-compte-en-ligne/tableau-de-bord',
-  }).toString();
+  // Get CSRF token
+  // const csrfToken = await page.evaluate(() => {
+  //   return window.tsme_data.csrfToken;
+  // });
 
-  // Login
-  await page.evaluate((loginBody) => {
-    return fetch('https://www.toutsurmoneau.fr/mon-compte-en-ligne/je-me-connecte', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: loginBody,
-    });
-  }, loginBody);
+  // // Login params
+  // const loginBody = new URLSearchParams({
+  //   'tsme_user_login[_username]': process.env.SUEZ_USERNAME,
+  //   'tsme_user_login[_password]': process.env.SUEZ_PASSWORD,
+  //   '_csrf_token': csrfToken,
+  //   'tsme_user_login[_target_path]': '/mon-compte-en-ligne/tableau-de-bord',
+  // }).toString();
+
+  // // Login
+  // await page.evaluate((loginBody) => {
+  //   return fetch('https://www.toutsurmoneau.fr/mon-compte-en-ligne/je-me-connecte', {
+  //     method: 'POST',
+  //     headers: {
+  //       'Content-Type': 'application/x-www-form-urlencoded',
+  //     },
+  //     body: loginBody,
+  //   });
+  // }, loginBody);
 
   // Get current month and year
   const date = new Date();
