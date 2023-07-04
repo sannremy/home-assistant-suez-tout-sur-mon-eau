@@ -4,10 +4,13 @@ const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 
 puppeteer.use(StealthPlugin());
 
-const getData = async () => {
-  const startDate = new Date();
-  console.log(`${startDate.toISOString()} - Get data from Suez, start.`);
+const log = (...args) => {
+  return console.log(`[${(new Date()).toISOString()}]`, ...args);
+}
 
+const getData = async () => {
+  log(`Get data from Suez, start.`);
+  log(`Launching puppeteer...`);
   const browser = await puppeteer.launch({
     headless: 'new',
     executablePath: '/usr/bin/chromium-browser',
@@ -23,16 +26,23 @@ const getData = async () => {
   // Open new tab
   const page = await browser.newPage();
 
+  // Set page timeout
+  page.setDefaultNavigationTimeout(5 * 60 * 1000); // 5 minutes
+
   // Set viewport
   await page.setViewport({
     width: 1168,
     height: 687,
   });
 
+  log(`Logging in...`);
+
   // Load login page
   await page.goto('https://www.toutsurmoneau.fr/mon-compte-en-ligne/je-me-connecte', {
     waitUntil: 'networkidle0',
   });
+
+  log(`Email`);
 
   // Click on email
   await page.waitForSelector('#username');
@@ -40,6 +50,8 @@ const getData = async () => {
 
   // Type email
   await page.keyboard.type(process.env.SUEZ_USERNAME);
+
+  log(`Password`);
 
   // Click on password
   await page.waitForSelector('#password');
@@ -54,29 +66,7 @@ const getData = async () => {
     waitUntil: 'networkidle0',
   });
 
-  // Get CSRF token
-  // const csrfToken = await page.evaluate(() => {
-  //   return window.tsme_data.csrfToken;
-  // });
-
-  // // Login params
-  // const loginBody = new URLSearchParams({
-  //   'tsme_user_login[_username]': process.env.SUEZ_USERNAME,
-  //   'tsme_user_login[_password]': process.env.SUEZ_PASSWORD,
-  //   '_csrf_token': csrfToken,
-  //   'tsme_user_login[_target_path]': '/mon-compte-en-ligne/tableau-de-bord',
-  // }).toString();
-
-  // // Login
-  // await page.evaluate((loginBody) => {
-  //   return fetch('https://www.toutsurmoneau.fr/mon-compte-en-ligne/je-me-connecte', {
-  //     method: 'POST',
-  //     headers: {
-  //       'Content-Type': 'application/x-www-form-urlencoded',
-  //     },
-  //     body: loginBody,
-  //   });
-  // }, loginBody);
+  log(`Get data...`);
 
   // Get current month and year
   const date = new Date();
@@ -91,6 +81,8 @@ const getData = async () => {
     const month = date.getMonth() + 1;
     const year = date.getFullYear();
 
+    log(`Get data for ${month}/${year}`);
+
     await page.goto(`https://www.toutsurmoneau.fr/mon-compte-en-ligne/statJData/${year}/${month}/${process.env.SUEZ_METER_ID}`);
     const monthData = await page.evaluate(() =>  {
       return JSON.parse(document.querySelector('body').innerText);
@@ -101,6 +93,8 @@ const getData = async () => {
   }
 
   await browser.close();
+
+  log(`Format data...`);
 
   const dataFlatten = data.flat().map((item) => {
     const [
@@ -127,6 +121,8 @@ const getData = async () => {
     return date === yesterdayString;
   }) || [];
 
+  log(`Send data to Home Assistant...`);
+
   await fetch('http://supervisor/core/api/states/sensor.suez_water_consumption', {
     method: 'POST',
     headers: {
@@ -147,8 +143,7 @@ const getData = async () => {
     }),
   });
 
-  const endDate = new Date();
-  console.log(`${endDate.toISOString()} - Get data from Suez, done.`);
+  log(`Get data from Suez, done.`);
 };
 
 const job = new CronJob(

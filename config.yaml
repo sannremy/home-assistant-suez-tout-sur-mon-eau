@@ -1,6 +1,6 @@
 name: "SUEZ - Tout sur mon eau"
 description: "Get daily water consumption from SUEZ - Tout sur mon eau."
-version: "1.0.0"
+version: "1.1.0"
 slug: "suez_tout_sur_mon_eau"
 init: false
 homeassistant_api: true
@@ -14,7 +14,7 @@ options:
   username: null
   password: null
   meter_id: null
-  cron: "0 6 * * *"
+  cron: "0 */3 * * *"
 schema:
   username: str
   password: str
