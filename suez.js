@@ -42,23 +42,33 @@ const getData = async () => {
     waitUntil: 'networkidle0',
   });
 
-  log(`Email`);
+  log(`Wait for email and password fields...`);
 
   // Click on email
-  await page.waitForSelector('#username');
+  await page.waitForSelector('#username', {
+    timeout: 10000,
+  });
+
+  await page.waitForSelector('#password', {
+    timeout: 10000,
+  });
+
+  log(`Set email`);
+
   await page.click('#username');
 
   // Type email
   await page.keyboard.type(process.env.SUEZ_USERNAME);
 
-  log(`Password`);
+  log(`Set password`);
 
   // Click on password
-  await page.waitForSelector('#password');
   await page.click('#password');
 
   // Type password
   await page.keyboard.type(process.env.SUEZ_PASSWORD);
+
+  log(`Press enter`);
 
   await page.keyboard.press('Enter');
 
