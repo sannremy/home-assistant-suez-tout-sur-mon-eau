@@ -42,35 +42,32 @@ const getData = async () => {
     waitUntil: 'networkidle0',
   });
 
-  log(`Wait for email and password fields...`);
+  log(`Get CSRF token`);
 
-  // Click on email
-  await page.waitForSelector('#username', {
-    timeout: 10000,
+  // Get CSRF token
+  const csrfToken = await page.evaluate(() => {
+    return window.tsme_data.csrfToken;
   });
 
-  await page.waitForSelector('#password', {
-    timeout: 10000,
-  });
+  // Login params
+  const loginBody = new URLSearchParams({
+    'tsme_user_login[_username]': process.env.SUEZ_USERNAME,
+    'tsme_user_login[_password]': process.env.SUEZ_PASSWORD,
+    '_csrf_token': csrfToken,
+    'tsme_user_login[_target_path]': '/mon-compte-en-ligne/tableau-de-bord',
+  }).toString();
 
-  log(`Set email`);
-
-  await page.click('#username');
-
-  // Type email
-  await page.keyboard.type(process.env.SUEZ_USERNAME);
-
-  log(`Set password`);
-
-  // Click on password
-  await page.click('#password');
-
-  // Type password
-  await page.keyboard.type(process.env.SUEZ_PASSWORD);
-
-  log(`Press enter`);
-
-  await page.keyboard.press('Enter');
+  // Login
+  log(`Post login request`);
+  await page.evaluate((loginBody) => {
+    return fetch('https://www.toutsurmoneau.fr/mon-compte-en-ligne/je-me-connecte', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: loginBody,
+    });
+  }, loginBody);
 
   await page.waitForNavigation({
     waitUntil: 'networkidle0',
