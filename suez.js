@@ -77,7 +77,7 @@ const getData = async () => {
 
   // Get current month and year
   const date = new Date();
-  const data = []
+  const data = [];
 
   // Get data for the last 2 months
   // If today is the 1st of the month, it won't have data yet,
