@@ -66,6 +66,8 @@ const getData = async () => {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: loginBody,
+    }).then(() => {
+      window.location.reload();
     });
   }, loginBody);
 
@@ -92,11 +94,17 @@ const getData = async () => {
 
     await page.goto(`https://www.toutsurmoneau.fr/mon-compte-en-ligne/statJData/${year}/${month}/${process.env.SUEZ_METER_ID}`);
     const monthData = await page.evaluate(() =>  {
-      return JSON.parse(document.querySelector('body').innerText);
+      try {
+        return JSON.parse(document.querySelector('body').innerText);
+      } catch (e) {
+        return null;
+      }
     });
 
     // Add month data at the beginning of the array
-    data.unshift(monthData);
+    if (monthData) {
+      data.unshift(monthData);
+    }
   }
 
   await browser.close();
