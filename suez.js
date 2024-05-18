@@ -138,27 +138,31 @@ const getData = async () => {
 
   log(`Send data to Home Assistant...`);
 
-  await fetch('http://supervisor/core/api/states/sensor.suez_water_consumption', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + process.env.SUPERVISOR_TOKEN,
-    },
-    body: JSON.stringify({
-      state: yesterdayData[1],
-      attributes: {
-        unit_of_measurement: 'L',
-        friendly_name: 'Suez - Water consumption',
-        icon: 'mdi:water',
-        device_class: 'water',
-        date: yesterdayData[0],
-        meter: yesterdayData[2],
-        state_class: 'measurement',
+  if (yesterdayData[1] === undefined || yesterdayData[1] === 0) {
+    log(`No data for yesterday yet.`);
+  } else {
+    await fetch('http://supervisor/core/api/states/sensor.suez_water_consumption', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + process.env.SUPERVISOR_TOKEN,
       },
-    }),
-  });
+      body: JSON.stringify({
+        state: yesterdayData[1],
+        attributes: {
+          unit_of_measurement: 'L',
+          friendly_name: 'Suez - Water consumption',
+          icon: 'mdi:water',
+          device_class: 'water',
+          date: yesterdayData[0],
+          meter: yesterdayData[2],
+          state_class: 'measurement',
+        },
+      }),
+    });
 
-  log(`Get data from Suez, done.`);
+    log(`Get data from Suez, done.`);
+  }
 };
 
 const job = new CronJob(
