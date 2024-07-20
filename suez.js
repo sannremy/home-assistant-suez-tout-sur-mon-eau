@@ -45,6 +45,8 @@ const getData = async () => {
   log(`Get CSRF token`);
 
   // Get CSRF token
+  await page.waitForFunction(() => 'tsme_data' in window);
+  await page.waitForFunction(() => 'csrfToken' in window.tsme_data);
   const csrfToken = await page.evaluate(() => {
     return window.tsme_data.csrfToken;
   });
