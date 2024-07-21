@@ -140,7 +140,7 @@ const getData = async () => {
 
   log(`Send data to Home Assistant...`);
 
-  if (yesterdayData[1] === undefined || yesterdayData[1] === 0) {
+  if (yesterdayData[1] === undefined) {
     log(`No data for yesterday yet.`);
   } else {
     await fetch('http://supervisor/core/api/states/sensor.suez_water_consumption', {
