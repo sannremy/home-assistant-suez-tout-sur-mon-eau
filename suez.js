@@ -1,10 +1,5 @@
-const CronJob = require('cron').CronJob;
-const puppeteer = require('puppeteer-extra');
-const StealthPlugin = require('puppeteer-extra-plugin-stealth');
-
 const isDev = process.env.DEV === 'true';
-
-puppeteer.use(StealthPlugin());
+const CronJob = require('cron').CronJob;
 
 const log = (...args) => {
   return console.log(`[${(new Date()).toISOString()}]`, ...args);
@@ -15,6 +10,11 @@ const sleep = (ms) => {
 };
 
 const getData = async () => {
+  const puppeteer = require('puppeteer-extra');
+  const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+
+  puppeteer.use(StealthPlugin());
+
   log(`Get data from Suez, start.`);
   log(`Launching puppeteer...`);
 
