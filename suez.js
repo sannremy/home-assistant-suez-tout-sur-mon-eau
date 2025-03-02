@@ -2,19 +2,28 @@ const CronJob = require('cron').CronJob;
 const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 
+const isDev = process.env.DEV === 'true';
+
 puppeteer.use(StealthPlugin());
 
 const log = (...args) => {
   return console.log(`[${(new Date()).toISOString()}]`, ...args);
 }
 
+const sleep = (ms) => {
+  return new Promise(resolve => setTimeout(resolve, ms));
+};
+
 const getData = async () => {
   log(`Get data from Suez, start.`);
   log(`Launching puppeteer...`);
+
   const browser = await puppeteer.launch({
-    headless: 'new',
-    executablePath: '/usr/bin/chromium-browser',
-    args: [
+    headless: isDev ? false : 'new',
+    executablePath: isDev ?
+      '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' :
+      '/usr/bin/chromium-browser',
+    args: isDev ? [] : [
       '--no-sandbox',
       '--disable-setuid-sandbox',
       '--headless',
@@ -42,139 +51,112 @@ const getData = async () => {
     waitUntil: 'networkidle0',
   });
 
-  log(`Get CSRF token`);
+  // Click on cookie banner
+  await page.waitForSelector('#CybotCookiebotDialogBodyButtonDecline');
+  await page.click('#CybotCookiebotDialogBodyButtonDecline');
 
-  // Get CSRF token
-  await page.waitForFunction(() => 'tsme_data' in window);
-  await page.waitForFunction(() => 'csrfToken' in window.tsme_data);
-  const csrfToken = await page.evaluate(() => {
-    return window.tsme_data.csrfToken;
-  });
+  // Wait few seconds
+  await sleep(2000);
 
-  // Login params
-  const loginBody = new URLSearchParams({
-    'tsme_user_login[_username]': process.env.SUEZ_USERNAME,
-    'tsme_user_login[_password]': process.env.SUEZ_PASSWORD,
-    '_csrf_token': csrfToken,
-    'tsme_user_login[_target_path]': '/mon-compte-en-ligne/tableau-de-bord',
-  }).toString();
+  // Type username in #username
+  await page.click('label[for="username"]');
+  await page.keyboard.type(process.env.SUEZ_USERNAME);
 
-  // Login
-  log(`Post login request`);
-  await page.evaluate((loginBody) => {
-    return fetch('https://www.toutsurmoneau.fr/mon-compte-en-ligne/je-me-connecte', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: loginBody,
-    }).then(() => {
-      window.location.reload();
-    });
-  }, loginBody);
+  // Type password in #password
+  await page.click('label[for="password"]');
+  await page.keyboard.type(process.env.SUEZ_PASSWORD);
 
+  // Press enter
+  await page.keyboard.press('Enter');
+
+  // Wait for redirection
   await page.waitForNavigation({
     waitUntil: 'networkidle0',
   });
 
   log(`Get data...`);
 
-  // Get current month and year
-  const date = new Date();
-  const data = [];
+  await page.goto(`https://www.toutsurmoneau.fr/mon-compte-en-ligne/historique-de-consommation-tr`);
 
-  // Get data for the last 2 months
-  // If today is the 1st of the month, it won't have data yet,
-  // so we get the data of the previous month
-  for (let i = 0; i < 2; i++) {
-    // Get data (last 'i' month)
-    date.setMonth(date.getMonth() - i);
-    const month = date.getMonth() + 1;
-    const year = date.getFullYear();
+  // Click on label "Litres"
+  await page.waitForSelector('div[data-cy="btn-period"]');
+  await page.click('div[data-cy="btn-period"] label:first-child');
 
-    log(`Get data for ${month}/${year}`);
+  // Click on label "Jours"
+  await page.waitForSelector('div[data-cy="btn-unit"]');
+  await page.click('div[data-cy="btn-unit"] label:first-child');
 
-    await page.goto(`https://www.toutsurmoneau.fr/mon-compte-en-ligne/statJData/${year}/${month}/${process.env.SUEZ_METER_ID}`);
-    const monthData = await page.evaluate(() =>  {
-      try {
-        return JSON.parse(document.querySelector('body').innerText);
-      } catch (e) {
-        return null;
+  let found = false;
+
+  // Check network for XHR requests
+  page.on('response', async (response) => {
+    if (response.url().includes('telemetry') && response.url().includes('id_PDS') && response.url().includes('mode=daily')) {
+      const data = await response.json();
+      const stats = data.content.measures;
+
+      // Get last stat
+      const lastStat = stats[stats.length - 1];
+      const liters = lastStat.volume * 1000; // convert m3 to L
+
+      if (isDev) {
+        log(`Last stat:`, lastStat.volume, lastStat.date);
+      } else {
+        await fetch('http://supervisor/core/api/states/sensor.suez_water_consumption', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + process.env.SUPERVISOR_TOKEN,
+          },
+          body: JSON.stringify({
+            state: liters,
+            attributes: {
+              unit_of_measurement: 'L',
+              friendly_name: 'Suez - Water consumption',
+              icon: 'mdi:water',
+              device_class: 'water',
+              date: lastStat.date,
+              meter: liters,
+              state_class: 'measurement',
+            },
+          }),
+        });
       }
-    });
 
-    // Add month data at the beginning of the array
-    if (monthData) {
-      data.unshift(monthData);
+      found = true;
     }
-  }
-
-  await browser.close();
-
-  log(`Format data...`);
-
-  const dataFlatten = data.flat().map((item) => {
-    const [
-      date,
-      value,
-      sum,
-    ] = item;
-    return [
-      date,
-      value * 1000, // convert m3 to L
-      sum * 1000, // convert m3 to L
-    ];
   });
 
-  // Date of yesterday as DD/MM/YYYY
-  const yesterday = new Date(Date.now() - 864e5);
-  const yesterdayString = `${String(yesterday.getDate()).padStart(2, '0')}/${String(yesterday.getMonth() + 1).padStart(2, '0')}/${yesterday.getFullYear()}`;
+  // Check if data is found and close browser
+  let counter = 0;
+  let timer = setInterval(async () => {
+    if (found) {
+      log(`Get data from Suez, done.`);
+      await browser.close();
+      clearInterval(timer);
+    }
 
-  // Find yesterday's data
-  const yesterdayData = dataFlatten.find((item) => {
-    const [
-      date,
-    ] = item;
-    return date === yesterdayString;
-  }) || [];
+    if (counter > 30) { // 30 seconds
+      log(`Get data from Suez, failed.`);
+      await browser.close();
+      clearInterval(timer);
+    }
 
-  log(`Send data to Home Assistant...`);
-
-  if (yesterdayData[1] === undefined) {
-    log(`No data for yesterday yet.`);
-  } else {
-    await fetch('http://supervisor/core/api/states/sensor.suez_water_consumption', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + process.env.SUPERVISOR_TOKEN,
-      },
-      body: JSON.stringify({
-        state: yesterdayData[1],
-        attributes: {
-          unit_of_measurement: 'L',
-          friendly_name: 'Suez - Water consumption',
-          icon: 'mdi:water',
-          device_class: 'water',
-          date: yesterdayData[0],
-          meter: yesterdayData[2],
-          state_class: 'measurement',
-        },
-      }),
-    });
-
-    log(`Get data from Suez, done.`);
-  }
+    counter++;
+  }, 1000);
 };
 
-const job = new CronJob(
-  `0 ${process.env.SUEZ_CRON}`,
-  function () { // onTick
-    getData();
-  },
-  null,
-  true, // Start the job right now
-  'Europe/Paris', // Timezone
-  null, // Context
-  true // Run the job
-);
+if (isDev) {
+  getData();
+} else {
+  const job = new CronJob(
+    `0 ${process.env.SUEZ_CRON}`,
+    function () { // onTick
+      getData();
+    },
+    null,
+    true, // Start the job right now
+    'Europe/Paris', // Timezone
+    null, // Context
+    true // Run the job
+  );
+}
