@@ -1,5 +1,4 @@
 const isDev = process.env.DEV === 'true';
-const CronJob = require('cron').CronJob;
 
 const log = (...args) => {
   return console.log(`[${(new Date()).toISOString()}]`, ...args);
@@ -145,18 +144,4 @@ const getData = async () => {
   }, 1000);
 };
 
-if (isDev) {
-  getData();
-} else {
-  const job = new CronJob(
-    `0 ${process.env.SUEZ_CRON}`,
-    function () { // onTick
-      getData();
-    },
-    null,
-    true, // Start the job right now
-    'Europe/Paris', // Timezone
-    null, // Context
-    true // Run the job
-  );
-}
+getData();
