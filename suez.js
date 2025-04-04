@@ -34,6 +34,23 @@ const getData = async () => {
   // Open new tab
   const page = await browser.newPage();
 
+  page.on("framenavigated", frame => {
+    const url = frame.url(); // the new url
+    log('Frame navigated', url);
+  });
+
+  await page.setRequestInterception(true);
+
+  page.on('request', (request) => {
+    if (request.url().includes('google') || request.url().includes('gstatic')) {
+      request.respond({
+        status: 401,
+      });
+    } else {
+      request.continue();
+    }
+  });
+
   // Set page timeout
   page.setDefaultNavigationTimeout(5 * 60 * 1000); // 5 minutes
 
@@ -43,45 +60,59 @@ const getData = async () => {
     height: 687,
   });
 
-  log(`Logging in...`);
-
   // Load login page
   await page.goto('https://www.toutsurmoneau.fr/mon-compte-en-ligne/je-me-connecte', {
     waitUntil: 'networkidle0',
   });
 
-  // Click on cookie banner
-  await page.waitForSelector('#CybotCookiebotDialogBodyButtonDecline');
-  await page.click('#CybotCookiebotDialogBodyButtonDecline');
-
   // Wait few seconds
   await sleep(2000);
 
-  // Type username in #username
-  await page.click('label[for="username"]');
-  await page.keyboard.type(process.env.SUEZ_USERNAME);
+  // Click on cookie banner
+  log(`Accepting cookies...`);
+  await page.waitForSelector('#CybotCookiebotDialogBodyButtonDecline');
+  await page.click('#CybotCookiebotDialogBodyButtonDecline');
 
-  // Type password in #password
-  await page.click('label[for="password"]');
-  await page.keyboard.type(process.env.SUEZ_PASSWORD);
+  log(`Logging in...`);
 
-  // Press enter
-  await page.keyboard.press('Enter');
+  // Get CSRF token
+  const csrfToken = await page.evaluate(() => {
+    return window.tsme_data.csrfToken;
+  });
+
+  // Login params
+  const loginBody = new URLSearchParams({
+    'tsme_user_login[_username]': process.env.SUEZ_USERNAME,
+    'tsme_user_login[_password]': process.env.SUEZ_PASSWORD,
+    '_csrf_token': csrfToken,
+    'tsme_user_login[_target_path]': '/mon-compte-en-ligne/tableau-de-bord',
+  }).toString();
+
+  // Login
+  await page.evaluate((loginBody) => {
+    return fetch('https://www.toutsurmoneau.fr/mon-compte-en-ligne/je-me-connecte', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: loginBody,
+    });
+  }, loginBody);
 
   // Wait for redirection
-  await page.waitForNavigation({
-    waitUntil: 'networkidle0',
-  });
+  await sleep(10000);
 
   log(`Get data...`);
 
   await page.goto(`https://www.toutsurmoneau.fr/mon-compte-en-ligne/historique-de-consommation-tr`);
 
   // Click on label "Litres"
+  log(`Clicking on Litres...`);
   await page.waitForSelector('div[data-cy="btn-period"]');
   await page.click('div[data-cy="btn-period"] label:first-child');
 
   // Click on label "Jours"
+  log(`Clicking on Jours...`);
   await page.waitForSelector('div[data-cy="btn-unit"]');
   await page.click('div[data-cy="btn-unit"] label:first-child');
 
@@ -90,6 +121,8 @@ const getData = async () => {
   // Check network for XHR requests
   page.on('response', async (response) => {
     if (response.url().includes('telemetry') && response.url().includes('id_PDS') && response.url().includes('mode=daily')) {
+      log(`Get data from Suez, response:`, response.url());
+
       const data = await response.json();
       const stats = data.content.measures;
 
