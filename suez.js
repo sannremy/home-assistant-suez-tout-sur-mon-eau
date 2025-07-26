@@ -104,18 +104,6 @@ const getData = async () => {
 
   log(`Get data...`);
 
-  await page.goto(`https://www.toutsurmoneau.fr/mon-compte-en-ligne/historique-de-consommation-tr`);
-
-  // Click on label "Litres"
-  log(`Clicking on Litres...`);
-  await page.waitForSelector('div[data-cy="btn-period"]');
-  await page.click('div[data-cy="btn-period"] label:first-child');
-
-  // Click on label "Jours"
-  log(`Clicking on Jours...`);
-  await page.waitForSelector('div[data-cy="btn-unit"]');
-  await page.click('div[data-cy="btn-unit"] label:first-child');
-
   let found = false;
 
   // Check network for XHR requests
@@ -158,6 +146,16 @@ const getData = async () => {
     }
   });
 
+  await page.goto(`https://www.toutsurmoneau.fr/mon-compte-en-ligne/historique-de-consommation-tr`);
+
+  // Click on label "Jours"
+  log(`Clicking on Jours...`);
+  const labelPeriod = 'div[data-cy="btn-period"] label:first-child';
+  await page.waitForSelector(labelPeriod);
+  await page.click(labelPeriod);
+
+  await sleep(5000);
+
   // Check if data is found and close browser
   let counter = 0;
   let timer = setInterval(async () => {
@@ -167,7 +165,7 @@ const getData = async () => {
       clearInterval(timer);
     }
 
-    if (counter > 30) { // 30 seconds
+    if (counter > 30) { // 30 seconds before gracefully exit
       log(`Get data from Suez, failed.`);
       await browser.close();
       clearInterval(timer);
