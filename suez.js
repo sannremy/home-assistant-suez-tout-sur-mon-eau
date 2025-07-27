@@ -137,6 +137,13 @@ const getData = async () => {
               date: lastStat.date,
               meter: liters,
               state_class: 'measurement',
+              // Chart.js labels and datasets attributes
+              chart_labels: stats.map(stat => stat.date.substring(0, 10)), // YYYY-MM-DD
+              chart_datasets: {
+                type: 'line',
+                label: 'Water consumption',
+                data: stats.map(stat => stat.volume * 1000), // convert m3 to L
+              },
             },
           }),
         });
