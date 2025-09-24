@@ -56,8 +56,8 @@ const getData = async () => {
 
   // Set viewport
   await page.setViewport({
-    width: 1168,
-    height: 687,
+    width: 1905,
+    height: 1030,
   });
 
   // Load login page
