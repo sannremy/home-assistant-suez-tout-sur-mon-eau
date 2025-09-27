@@ -1,4 +1,6 @@
 const isDev = process.env.DEV === 'true';
+const email = process.env.SUEZ_USERNAME;
+const password = process.env.SUEZ_PASSWORD;
 
 const log = (...args) => {
   return console.log(`[${(new Date()).toISOString()}]`, ...args);
@@ -8,11 +10,24 @@ const sleep = (ms) => {
   return new Promise(resolve => setTimeout(resolve, ms));
 };
 
+const simulateHumanBehavior = async (page) => {
+  // Add random mouse movements
+  await page.mouse.move(532 * Math.random() + 122, 243 * Math.random() + 123, { steps: 3 });
+  await page.mouse.move(345 * Math.random(), 129 * Math.random() + 342, { steps: 10 });
+
+  // Add pauses
+  await sleep(
+    Math.floor(Math.random() * (3000 - 1000) + 1000)
+  );
+};
+
 const getData = async () => {
   const puppeteer = require('puppeteer-extra');
   const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+  const AdblockerPlugin = require('puppeteer-extra-plugin-adblocker');
 
   puppeteer.use(StealthPlugin());
+  puppeteer.use(AdblockerPlugin({ blockTrackers: true }));
 
   log(`Get data from Suez, start.`);
   log(`Launching puppeteer...`);
@@ -28,6 +43,11 @@ const getData = async () => {
       '--headless',
       '--disable-gpu',
       '--disable-dev-shm-usage',
+      '--disable-infobars',
+      '--window-position=0,0',
+      '--ignore-certificate-errors',
+      '--ignore-certificate-errors-spki-list',
+      '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
     ],
   });
 
@@ -65,42 +85,47 @@ const getData = async () => {
     waitUntil: 'networkidle0',
   });
 
-  // Wait few seconds
-  await sleep(2000);
+  await simulateHumanBehavior(page);
+
+  // Wait until the Cloudflare challenge form is gone
+  await page.waitForFunction(() => {
+    return document.querySelector('#challenge-form') === null;
+  }, { timeout: 30000 });
+
+  await simulateHumanBehavior(page);
 
   // Click on cookie banner
   log(`Accepting cookies...`);
   await page.waitForSelector('#CybotCookiebotDialogBodyButtonDecline');
   await page.click('#CybotCookiebotDialogBodyButtonDecline');
 
+  // Login steps
+
+  // Click on email
+  await page.waitForSelector('#username');
+  await page.click('#username');
+
+  // Type email
+  await page.keyboard.type(email);
+
+  // Click on password
+  await page.waitForSelector('#password');
+  await page.click('#password');
+
+  // Type password
+  await page.keyboard.type(password);
+
+  await simulateHumanBehavior(page);
+
+  // Press Enter
+  await page.keyboard.press('Enter');
+
   log(`Logging in...`);
 
-  // Get CSRF token
-  const csrfToken = await page.evaluate(() => {
-    return window.tsme_data.csrfToken;
-  });
-
-  // Login params
-  const loginBody = new URLSearchParams({
-    'tsme_user_login[_username]': process.env.SUEZ_USERNAME,
-    'tsme_user_login[_password]': process.env.SUEZ_PASSWORD,
-    '_csrf_token': csrfToken,
-    'tsme_user_login[_target_path]': '/mon-compte-en-ligne/tableau-de-bord',
-  }).toString();
-
-  // Login
-  await page.evaluate((loginBody) => {
-    return fetch('https://www.toutsurmoneau.fr/mon-compte-en-ligne/je-me-connecte', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: loginBody,
-    });
-  }, loginBody);
+  await simulateHumanBehavior(page);
 
   // Wait for redirection
-  await sleep(10000);
+  await sleep(Math.random() * 1000 + 10000);
 
   log(`Get data...`);
 
@@ -159,13 +184,15 @@ const getData = async () => {
 
   await page.goto(`https://www.toutsurmoneau.fr/mon-compte-en-ligne/historique-de-consommation-tr`);
 
+  await simulateHumanBehavior(page);
+
   // Click on label "Jours"
   log(`Clicking on Jours...`);
   const labelPeriod = 'div[data-cy="btn-period"] label:first-child';
   await page.waitForSelector(labelPeriod);
   await page.click(labelPeriod);
 
-  await sleep(5000);
+  await sleep(Math.random() * 1000 + 3000);
 
   // Check if data is found and close browser
   let counter = 0;
